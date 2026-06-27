@@ -122,6 +122,8 @@ REVIEWS_FILE  = os.path.join(BASE_DIR, "reviews.json")
 PROMOS_FILE   = os.path.join(BASE_DIR, "promos.json")
 COMMENTS_FILE = os.path.join(BASE_DIR, "comments.json")   # matnli izohlar
 FAQ_FILE      = os.path.join(BASE_DIR, "faq.json")
+MASTERS_FILE  = os.path.join(BASE_DIR, "masters.json")     # ustalar ro'yxati
+COURIERS_FILE = os.path.join(BASE_DIR, "couriers.json")    # kuryer arizalari
 
 # Саватча eslatmasi qancha vaqtdan keyin yuborilsin (soat)
 CART_REMINDER_HOURS = 24
@@ -164,6 +166,24 @@ _pending_delivery: dict = {}
 bot     = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
 dp      = Dispatcher(storage=storage)
+
+# ===========================================================================
+# ⚡️ ENG YUQORI USTUNLIK: "Усталар рўйхати" ва "Курьер бўлиш" тугмалари.
+# Bu ikki handler shu yerda — dp yaratilgandan keyin, boshqa HAR QANDAY
+# state-based handlerdan OLDIN — ro'yxatdan o'tkaziladi. aiogram handlerlarni
+# ro'yxatga olingan tartibda tekshiradi, shu sabab bu ikkisi foydalanuvchi
+# qaysi FSM holatida bo'lishidan qat'i nazar (asosiy menyu, kategoriya ichi,
+# admin panel va h.k.) har doim to'g'ri ishlaydi. Matn faqat KIRILL.
+# ===========================================================================
+@dp.message(F.text == "🔧 Усталар рўйхати")
+async def _priority_show_masters(message: Message, state: FSMContext):
+    await show_masters(message)
+
+@dp.message(F.text == "🚚 Курьер бўлиш учун ариза")
+async def _priority_courier_apply(message: Message, state: FSMContext):
+    await courier_apply_start(message, state)
+# ===========================================================================
+
 # ===========================================================================
 # 2) TARJIMALAR (21 TIL) — asl nusxa + yangi kalitlar
 # ===========================================================================
@@ -380,7 +400,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': 'Биз маҳсулотни манзилингизга етказиб берамиз.\n\nБуюртма бериш учун пастдаги тугмани босинг, операторимиз сиз билан боғланади.',
         'categories_label': 'БЎЛИМЛАР',
         'categories': {'electronics':'📱 Электроника','auto':'🚗 Машина','home':'🏠 Уй-хўжалик',
-                       'fruits':'🍎 Мевалар','vegetables':'🥦 Сабзавотлар','kids':'👶 Болалар учун','clothes':'🛍️ Кийим-кечаклар','spare_parts':'🔧 Запчастлар','food':'🍽️ Озиқ-овқат','pharmacy':'💊 Доrixona/гигиена','delivery':'🚚 Етказиб бериш'},
+                       'fruits':'🍎 Мевалар','vegetables':'🥦 Сабзавотлар','kids':'👶 Болалар учун','clothes':'🛍️ Кийим-кечаклар','spare_parts':'🔧 Запчастлар','food':'🍽️ Озиқ-овқат','pharmacy':'💊 Дорихона/гигиена','drinks':'🥤 Ичимликлар','household_chem':'🧹 Уй кимёси','bakery':'🍞 Нон-маҳсулотлар','dairy':'🥚 Сут маҳсулотлари','hygiene':'🧴 Шахсий гигиена','sewing':'🧵 Тикувчилик','home_goods':'🏠 Уй-рўзғор','garden':'🌱 Боғ-деҳқончилик','sausage':'🌭 Калбаса маҳсулотлари','delivery':'🚚 Етказиб бериш'},
         'empty_category': '📭 Ҳозирча бу бўлимда маҳсулот йўқ.'},
  'ru': {'choose_lang': 'Выберите язык:','lang_set': 'Язык выбран: Русский ✅',
         'main_menu': 'Главное меню. Выберите раздел:','back': '⬅️ Назад','to_main': '🏠 Главное меню',
@@ -392,7 +412,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': 'Мы доставим товар по вашему адресу.\n\nЧтобы оформить заказ, нажмите кнопку ниже — наш оператор свяжется с вами.',
         'categories_label': 'РАЗДЕЛЫ',
         'categories': {'electronics':'📱 Электроника','auto':'🚗 Авто','home':'🏠 Хозтовары',
-                       'fruits':'🍎 Фрукты','vegetables':'🥦 Овощи','kids':'👶 Для детей','clothes':'🛍️ Одежда','spare_parts':'🔧 Запчасти','food':'🍽️ Продукты','pharmacy':'💊 Аптека/гигиена','delivery':'🚚 Доставка'},
+                       'fruits':'🍎 Фрукты','vegetables':'🥦 Овощи','kids':'👶 Для детей','clothes':'🛍️ Одежда','spare_parts':'🔧 Запчасти','food':'🍽️ Продукты','pharmacy':'💊 Аптека/гигиена','drinks':'🥤 Напитки','household_chem':'🧹 Бытовая химия','bakery':'🍞 Хлебобулочные','dairy':'🥚 Молочные продукты','hygiene':'🧴 Личная гигиена','sewing':'🧵 Шитьё','home_goods':'🏠 Товары для дома','garden':'🌱 Сад-огород','sausage':'🌭 Колбасные изделия','delivery':'🚚 Доставка'},
         'empty_category': '📭 В этом разделе пока нет товаров.'},
  'en': {'choose_lang': 'Choose your language:','lang_set': 'Language set: English ✅',
         'main_menu': 'Main menu. Choose a section:','back': '⬅️ Back','to_main': '🏠 Main menu',
@@ -404,7 +424,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': 'We deliver the product to your address.\n\nTo place an order, tap the button below — our operator will contact you.',
         'categories_label': 'SECTIONS',
         'categories': {'electronics':'📱 Electronics','auto':'🚗 Auto','home':'🏠 Household',
-                       'fruits':'🍎 Fruits','vegetables':'🥦 Vegetables','kids':'👶 For kids','clothes':'🛍️ Clothing','spare_parts':'🔧 Spare parts','food':'🍽️ Food','pharmacy':'💊 Pharmacy/hygiene','delivery':'🚚 Delivery'},
+                       'fruits':'🍎 Fruits','vegetables':'🥦 Vegetables','kids':'👶 For kids','clothes':'🛍️ Clothing','spare_parts':'🔧 Spare parts','food':'🍽️ Food','pharmacy':'💊 Pharmacy/hygiene','drinks':'🥤 Drinks','household_chem':'🧹 Household chemicals','bakery':'🍞 Bakery','dairy':'🥚 Dairy','hygiene':'🧴 Personal hygiene','sewing':'🧵 Sewing','home_goods':'🏠 Home goods','garden':'🌱 Garden','sausage':'🌭 Sausage products','delivery':'🚚 Delivery'},
         'empty_category': '📭 No products in this section yet.'},
  'uk': {'choose_lang': 'Виберіть мову:','lang_set': 'Мову обрано: Українська ✅',
         'main_menu': 'Головне меню. Виберіть розділ:','back': '⬅️ Назад','to_main': '🏠 Головне меню',
@@ -416,7 +436,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': "Ми доставимо товар за вашою адресою.\n\nЩоб оформити замовлення, натисніть кнопку нижче — наш оператор зв'яжеться з вами.",
         'categories_label': 'РОЗДІЛИ',
         'categories': {'electronics':'📱 Електроніка','auto':'🚗 Авто','home':'🏠 Товари для дому',
-                       'fruits':'🍎 Фрукти','vegetables':'🥦 Овочі','kids':'👶 Для дітей','clothes':'👗 Одяг','delivery':'🚚 Доставка'},
+                       'fruits':'🍎 Фрукти','vegetables':'🥦 Овочі','kids':'👶 Для дітей','clothes':'👗 Одяг','sausage':'🌭 Ковбасні вироби','delivery':'🚚 Доставка'},
         'empty_category': '📭 У цьому розділі поки немає товарів.'},
  'es': {'choose_lang': 'Elige tu idioma:','lang_set': 'Idioma seleccionado: Español ✅',
         'main_menu': 'Menú principal. Elige una sección:','back': '⬅️ Atrás','to_main': '🏠 Menú principal',
@@ -428,7 +448,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': 'Entregamos el producto en su dirección.\n\nPara hacer un pedido, toque el botón de abajo — nuestro operador se pondrá en contacto con usted.',
         'categories_label': 'SECCIONES',
         'categories': {'electronics':'📱 Electrónica','auto':'🚗 Auto','home':'🏠 Hogar',
-                       'fruits':'🍎 Frutas','vegetables':'🥦 Verduras','kids':'👶 Para niños','clothes':'👗 Ropa','delivery':'🚚 Entrega'},
+                       'fruits':'🍎 Frutas','vegetables':'🥦 Verduras','kids':'👶 Para niños','clothes':'👗 Ropa','sausage':'🌭 Embutidos','delivery':'🚚 Entrega'},
         'empty_category': '📭 Todavía no hay productos en esta sección.'},
  'pt': {'choose_lang': 'Escolha seu idioma:','lang_set': 'Idioma selecionado: Português ✅',
         'main_menu': 'Menu principal. Escolha uma seção:','back': '⬅️ Voltar','to_main': '🏠 Menu principal',
@@ -440,7 +460,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': 'Entregamos o produto no seu endereço.\n\nPara fazer um pedido, toque no botão abaixo — nosso operador entrará em contato.',
         'categories_label': 'SEÇÕES',
         'categories': {'electronics':'📱 Eletrônicos','auto':'🚗 Carros','home':'🏠 Casa',
-                       'fruits':'🍎 Frutas','vegetables':'🥦 Vegetais','delivery':'🚚 Entrega'},
+                       'fruits':'🍎 Frutas','vegetables':'🥦 Vegetais','sausage':'🌭 Embutidos','delivery':'🚚 Entrega'},
         'empty_category': '📭 Ainda não há produtos nesta seção.'},
  'de': {'choose_lang': 'Wählen Sie Ihre Sprache:','lang_set': 'Sprache gewählt: Deutsch ✅',
         'main_menu': 'Hauptmenü. Wählen Sie einen Bereich:','back': '⬅️ Zurück','to_main': '🏠 Hauptmenü',
@@ -452,7 +472,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': 'Wir liefern das Produkt an Ihre Adresse.\n\nUm zu bestellen, tippen Sie auf die Schaltfläche unten — unser Mitarbeiter wird sich mit Ihnen in Verbindung setzen.',
         'categories_label': 'BEREICHE',
         'categories': {'electronics':'📱 Elektronik','auto':'🚗 Auto','home':'🏠 Haushalt',
-                       'fruits':'🍎 Obst','vegetables':'🥦 Gemüse','kids':'👶 Für Kinder','clothes':'👗 Kleidung','delivery':'🚚 Lieferung'},
+                       'fruits':'🍎 Obst','vegetables':'🥦 Gemüse','kids':'👶 Für Kinder','clothes':'👗 Kleidung','sausage':'🌭 Wurstwaren','delivery':'🚚 Lieferung'},
         'empty_category': '📭 In diesem Bereich gibt es noch keine Produkte.'},
  'it': {'choose_lang': 'Scegli la tua lingua:','lang_set': 'Lingua selezionata: Italiano ✅',
         'main_menu': 'Menu principale. Scegli una sezione:','back': '⬅️ Indietro','to_main': '🏠 Menu principale',
@@ -464,7 +484,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': 'Consegniamo il prodotto al tuo indirizzo.\n\nPer effettuare un ordine, tocca il pulsante qui sotto — il nostro operatore ti contatterà.',
         'categories_label': 'SEZIONI',
         'categories': {'electronics':'📱 Elettronica','auto':'🚗 Auto','home':'🏠 Casa',
-                       'fruits':'🍎 Frutta','vegetables':'🥦 Verdure','delivery':'🚚 Consegna'},
+                       'fruits':'🍎 Frutta','vegetables':'🥦 Verdure','sausage':'🌭 Salumi','delivery':'🚚 Consegna'},
         'empty_category': '📭 Non ci sono ancora prodotti in questa sezione.'},
  'fr': {'choose_lang': 'Choisissez votre langue:','lang_set': 'Langue sélectionnée: Français ✅',
         'main_menu': 'Menu principal. Choisissez une section:','back': '⬅️ Retour','to_main': '🏠 Menu principal',
@@ -476,7 +496,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': 'Nous livrons le produit à votre adresse.\n\nPour passer une commande, appuyez sur le bouton ci-dessous — notre opérateur vous contactera.',
         'categories_label': 'SECTIONS',
         'categories': {'electronics':'📱 Électronique','auto':'🚗 Auto','home':'🏠 Maison',
-                       'fruits':'🍎 Fruits','vegetables':'🥦 Légumes','kids':'👶 Pour enfants','clothes':'👗 Vêtements','delivery':'🚚 Livraison'},
+                       'fruits':'🍎 Fruits','vegetables':'🥦 Légumes','kids':'👶 Pour enfants','clothes':'👗 Vêtements','sausage':'🌭 Charcuterie','delivery':'🚚 Livraison'},
         'empty_category': "📭 Il n'y a pas encore de produits dans cette section."},
  'tr': {'choose_lang': 'Dilinizi seçin:','lang_set': 'Dil seçildi: Türkçe ✅',
         'main_menu': 'Ana menü. Bir bölüm seçin:','back': '⬅️ Geri','to_main': '🏠 Ana menü',
@@ -488,7 +508,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': 'Ürünü adresinize teslim ediyoruz.\n\nSipariş vermek için aşağıdaki düğmeye dokunun — operatörümüz sizinle iletişime geçecek.',
         'categories_label': 'BÖLÜMLER',
         'categories': {'electronics':'📱 Elektronik','auto':'🚗 Araba','home':'🏠 Ev eşyaları',
-                       'fruits':'🍎 Meyveler','vegetables':'🥦 Sebzeler','delivery':'🚚 Teslimat'},
+                       'fruits':'🍎 Meyveler','vegetables':'🥦 Sebzeler','sausage':'🌭 Şarküteri','delivery':'🚚 Teslimat'},
         'empty_category': '📭 Bu bölümde henüz ürün yok.'},
  'he': {'choose_lang': 'בחר את השפה שלך:','lang_set': 'השפה נבחרה: עברית ✅',
         'main_menu': 'תפריט ראשי. בחר קטגוריה:','back': '⬅️ חזרה','to_main': '🏠 תפריט ראשי',
@@ -548,7 +568,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': 'Kami mengirimkan produk ke alamat Anda.\n\nUntuk memesan, ketuk tombol di bawah — operator kami akan menghubungi Anda.',
         'categories_label': 'BAGIAN',
         'categories': {'electronics':'📱 Elektronik','auto':'🚗 Mobil','home':'🏠 Rumah Tangga',
-                       'fruits':'🍎 Buah-buahan','vegetables':'🥦 Sayuran','delivery':'🚚 Pengiriman'},
+                       'fruits':'🍎 Buah-buahan','vegetables':'🥦 Sayuran','sausage':'🌭 Produk sosis','delivery':'🚚 Pengiriman'},
         'empty_category': '📭 Belum ada produk di bagian ini.'},
  'sv': {'choose_lang': 'Välj ditt språk:','lang_set': 'Språk valt: Svenska ✅',
         'main_menu': 'Huvudmeny. Välj en kategori:','back': '⬅️ Tillbaka','to_main': '🏠 Huvudmeny',
@@ -560,7 +580,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': 'Vi levererar produkten till din adress.\n\nFör att beställa, tryck på knappen nedan — vår operatör kontaktar dig.',
         'categories_label': 'KATEGORIER',
         'categories': {'electronics':'📱 Elektronik','auto':'🚗 Bil','home':'🏠 Hushåll',
-                       'fruits':'🍎 Frukt','vegetables':'🥦 Grönsaker','kids':'👶 För barn','clothes':'👗 Kläder','delivery':'🚚 Leverans'},
+                       'fruits':'🍎 Frukt','vegetables':'🥦 Grönsaker','kids':'👶 För barn','clothes':'👗 Kläder','sausage':'🌭 Köttprodukter','delivery':'🚚 Leverans'},
         'empty_category': '📭 Det finns inga produkter i den här kategorin än.'},
  'ms': {'choose_lang': 'Pilih bahasa anda:','lang_set': 'Bahasa dipilih: Melayu ✅',
         'main_menu': 'Menu utama. Pilih bahagian:','back': '⬅️ Kembali','to_main': '🏠 Menu utama',
@@ -572,7 +592,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': 'Kami menghantar produk ke alamat anda.\n\nUntuk membuat pesanan, ketik butang di bawah — operator kami akan menghubungi anda.',
         'categories_label': 'BAHAGIAN',
         'categories': {'electronics':'📱 Elektronik','auto':'🚗 Kereta','home':'🏠 Rumah Tangga',
-                       'fruits':'🍎 Buah-buahan','vegetables':'🥦 Sayur-sayuran','kids':'👶 Untuk kanak-kanak','clothes':'👗 Pakaian','delivery':'🚚 Penghantaran'},
+                       'fruits':'🍎 Buah-buahan','vegetables':'🥦 Sayur-sayuran','kids':'👶 Untuk kanak-kanak','clothes':'👗 Pakaian','sausage':'🌭 Produk sosej','delivery':'🚚 Penghantaran'},
         'empty_category': '📭 Belum ada produk dalam bahagian ini.'},
  'nl': {'choose_lang': 'Kies uw taal:','lang_set': 'Taal gekozen: Nederlands ✅',
         'main_menu': 'Hoofdmenu. Kies een categorie:','back': '⬅️ Terug','to_main': '🏠 Hoofdmenu',
@@ -584,7 +604,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': 'Wij bezorgen het product op uw adres.\n\nOm te bestellen, tik op de knop hieronder — onze medewerker neemt contact met u op.',
         'categories_label': 'CATEGORIEËN',
         'categories': {'electronics':'📱 Elektronica','auto':'🚗 Auto','home':'🏠 Huishouden',
-                       'fruits':'🍎 Fruit','vegetables':'🥦 Groenten','kids':'👶 Voor kinderen','clothes':'👗 Kleding','delivery':'🚚 Bezorging'},
+                       'fruits':'🍎 Fruit','vegetables':'🥦 Groenten','kids':'👶 Voor kinderen','clothes':'👗 Kleding','sausage':'🌭 Vleeswaren','delivery':'🚚 Bezorging'},
         'empty_category': '📭 Er zijn nog geen producten in deze categorie.'},
  'hi': {'choose_lang': 'अपनी भाषा चुनें:','lang_set': 'भाषा चयनित: हिंदी ✅',
         'main_menu': 'मुख्य मेनू। एक श्रेणी चुनें:','back': '⬅️ वापस','to_main': '🏠 मुख्य मेनू',
@@ -596,7 +616,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': 'हम उत्पाद को आपके पते पर पहुंचाते हैं।\n\nऑर्डर करने के लिए, नीचे दिए गए बटन को टैप करें — हमारा ऑपरेटर आपसे संपर्क करेगा।',
         'categories_label': 'श्रेणियाँ',
         'categories': {'electronics':'📱 इलेक्ट्रॉनिक्स','auto':'🚗 कार','home':'🏠 घरेलू सामान',
-                       'fruits':'🍎 फल','vegetables':'🥦 सब्जियां','kids':'👶 बच्चों के लिए','clothes':'👗 कपड़े','delivery':'🚚 डिलीवरी'},
+                       'fruits':'🍎 फल','vegetables':'🥦 सब्जियां','kids':'👶 बच्चों के लिए','clothes':'👗 कपड़े','sausage':'🌭 सॉसेज उत्पाद','delivery':'🚚 डिलीवरी'},
         'empty_category': '📭 इस श्रेणी में अभी तक कोई उत्पाद नहीं है।'},
  'ko': {'choose_lang': '언어를 선택하세요:','lang_set': '언어 선택됨: 한국어 ✅',
         'main_menu': '메인 메뉴. 카테고리를 선택하세요:','back': '⬅️ 뒤로','to_main': '🏠 메인 메뉴',
@@ -608,7 +628,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': '상품을 귀하의 주소로 배송해 드립니다.\n\n주문하려면 아래 버튼을 탭하세요 — 담당자가 연락드릴 것입니다.',
         'categories_label': '카테고리',
         'categories': {'electronics':'📱 전자제품','auto':'🚗 자동차','home':'🏠 생활용품',
-                       'fruits':'🍎 과일','vegetables':'🥦 채소','kids':'👶 어린이용','clothes':'👗 의류','delivery':'🚚 배송'},
+                       'fruits':'🍎 과일','vegetables':'🥦 채소','kids':'👶 어린이용','clothes':'👗 의류','sausage':'🌭 소시지 제품','delivery':'🚚 배송'},
         'empty_category': '📭 아직 이 카테고리에 상품이 없습니다.'},
  'vi': {'choose_lang': 'Chọn ngôn ngữ của bạn:','lang_set': 'Đã chọn ngôn ngữ: Tiếng Việt ✅',
         'main_menu': 'Menu chính. Chọn một danh mục:','back': '⬅️ Quay lại','to_main': '🏠 Menu chính',
@@ -620,7 +640,7 @@ TEXTS = {'uz': {'choose_lang': 'Тилни танланг:','lang_set': 'Тил 
         'delivery_info': 'Chúng tôi giao sản phẩm đến địa chỉ của bạn.\n\nĐể đặt hàng, chạm vào nút bên dưới — nhân viên của chúng tôi sẽ liên hệ với bạn.',
         'categories_label': 'DANH MỤC',
         'categories': {'electronics':'📱 Điện tử','auto':'🚗 Ô tô','home':'🏠 Đồ gia dụng',
-                       'fruits':'🍎 Trái cây','vegetables':'🥦 Rau củ','kids':'👶 Cho trẻ em','clothes':'👗 Quần áo','delivery':'🚚 Giao hàng'},
+                       'fruits':'🍎 Trái cây','vegetables':'🥦 Rau củ','kids':'👶 Cho trẻ em','clothes':'👗 Quần áo','sausage':'🌭 Sản phẩm xúc xích','delivery':'🚚 Giao hàng'},
         'empty_category': '📭 Chưa có sản phẩm nào trong danh mục này.'}}
 
 def t(lang: str, key: str, **kwargs) -> str:
@@ -635,7 +655,7 @@ def nt(lang: str, key: str, **kwargs) -> str:
 # ===========================================================================
 # 3) FAYL OPERATSIYALARI
 # ===========================================================================
-DEFAULT_PRODUCTS = {"electronics":[],"auto":[],"home":[],"fruits":[],"vegetables":[],"kids":[],"clothes":[],"spare_parts":[],"food":[],"pharmacy":[]}
+DEFAULT_PRODUCTS = {"electronics":[],"auto":[],"home":[],"fruits":[],"vegetables":[],"kids":[],"clothes":[],"spare_parts":[],"food":[],"pharmacy":[],"drinks":[],"household_chem":[],"bakery":[],"dairy":[],"hygiene":[],"sewing":[],"home_goods":[],"garden":[],"sausage":[]}
 
 def _load_json(path, default):
     if not os.path.exists(path):
@@ -664,6 +684,12 @@ def save_orders(d): _save_json(ORDERS_FILE, d)
 
 def load_users() -> dict: return _load_json(USERS_FILE, {})
 def save_users(d): _save_json(USERS_FILE, d)
+
+def load_masters() -> list: return _load_json(MASTERS_FILE, [])
+def save_masters(d): _save_json(MASTERS_FILE, d)
+
+def load_couriers() -> list: return _load_json(COURIERS_FILE, [])
+def save_couriers(d): _save_json(COURIERS_FILE, d)
 
 def load_reviews() -> list: return _load_json(REVIEWS_FILE, [])
 def save_reviews(d): _save_json(REVIEWS_FILE, d)
@@ -972,8 +998,14 @@ class AdminState(StatesGroup):
     viewing_top_customers= State()
     set_delivery_time    = State()   # yetkazish vaqtini belgilash
     manage_discount      = State()   # чегирмаni boshqarish
+    add_master_name      = State()
+    add_master_phone     = State()
+    add_master_spec      = State()
 
-CATEGORY_KEYS = ["electronics","auto","home","fruits","vegetables","kids","clothes","spare_parts","food","pharmacy"]
+class CourierState(StatesGroup):
+    applying             = State()
+
+CATEGORY_KEYS = ["electronics","auto","home","fruits","vegetables","kids","clothes","spare_parts","food","pharmacy","drinks","household_chem","bakery","dairy","hygiene","sewing","home_goods","garden","sausage"]
 # ===========================================================================
 # 5) YORDAMCHI FUNKSIYALAR — KLAVIATURALAR
 # ===========================================================================
@@ -991,11 +1023,17 @@ def get_categories_keyboard(lang, user_id=0):
         [KeyboardButton(text=cats["home"]),         KeyboardButton(text=cats["fruits"])],
         [KeyboardButton(text=cats["vegetables"]),   KeyboardButton(text=cats["kids"])],
         [KeyboardButton(text=cats["clothes"]),      KeyboardButton(text=cats["spare_parts"])],
-        [KeyboardButton(text=cats["food"]),         KeyboardButton(text=cats["pharmacy"])],
+        [KeyboardButton(text=cats["food"]),         KeyboardButton(text=cats["drinks"])],
+        [KeyboardButton(text=cats["pharmacy"]),     KeyboardButton(text=cats["hygiene"])],
+        [KeyboardButton(text=cats["household_chem"]),KeyboardButton(text=cats["bakery"])],
+        [KeyboardButton(text=cats["dairy"]),        KeyboardButton(text=cats["sewing"])],
+        [KeyboardButton(text=cats["home_goods"]),   KeyboardButton(text=cats["garden"])],
+        [KeyboardButton(text=cats["sausage"])],
         [KeyboardButton(text=cats["delivery"])],
         [KeyboardButton(text=nt(lang,"search")), KeyboardButton(text=nt(lang,"cart"))],
         [KeyboardButton(text=nt(lang,"my_orders")), KeyboardButton(text=nt(lang,"referral_btn"))],
-        [KeyboardButton(text=nt(lang,"faq_btn"))],
+        [KeyboardButton(text=nt(lang,"faq_btn")), KeyboardButton(text="🔧 Усталар рўйхати")],
+        [KeyboardButton(text="🚚 Курьер бўлиш учун ариза")],
     ]
     if is_admin(user_id):
         rows.append([KeyboardButton(text="🛠 Admin panel")])
@@ -1092,7 +1130,7 @@ def all_faq_texts():      return list({nt(l,"faq_btn") for l in LANG_BUTTONS.val
 CATEGORY_LABELS_UZ = {
     "electronics":"📱 Elektronika","auto":"🚗 Mashina",
     "home":"🏠 Uy-xo'jalik","fruits":"🍎 Mevalar","vegetables":"🥦 Sabzavotlar",
-    "kids":"👶 Bolalar uchun","clothes":"🛍️ Kiyim-kechaklar","spare_parts":"🔧 Zapchastlar","food":"🍽️ Oziq-ovqat","pharmacy":"💊 Dorixona/gigiyena",
+    "kids":"👶 Болалар учун","clothes":"🛍️ Кийим-кечаклар","spare_parts":"🔧 Запчастлар","food":"🍽️ Озиқ-овқат","pharmacy":"💊 Дорихона/гигиена","drinks":"🥤 Ичимликлар","household_chem":"🧹 Уй кимёси","bakery":"🍞 Нон-маҳсулотлар","dairy":"🥚 Сут маҳсулотлари","hygiene":"🧴 Шахсий гигиена","sewing":"🧵 Тикувчилик","home_goods":"🏠 Уй-рўзғор","garden":"🌱 Боғ-деҳқончилик","sausage":"🌭 Калбаса маҳсулотлари",
 }
 
 def admin_menu_keyboard():
@@ -1104,6 +1142,7 @@ def admin_menu_keyboard():
         [KeyboardButton(text="💰 Chegirmalarni boshqarish")],
         [KeyboardButton(text="📤 Eksport (CSV)"), KeyboardButton(text="👥 Top mijozlar")],
         [KeyboardButton(text="💬 Izohlarni moderatsiya"), KeyboardButton(text="❓ FAQ boshqarish")],
+        [KeyboardButton(text="🔧 Усталар бошқаруви"), KeyboardButton(text="🚚 Курьер бошқаруви")],
         [KeyboardButton(text="🚪 Admin rejimidan chiqish")],
     ], resize_keyboard=True)
 
@@ -2389,6 +2428,239 @@ async def admin_faq_delete_confirm(cb: CallbackQuery):
     await cb.answer("✅ O'chirildi")
     await cb.message.edit_reply_markup(reply_markup=None)
 # ===========================================================================
+# 🔧 USTALAR — foydalanuvchiga ko'rsatish
+# ===========================================================================
+async def show_masters(message: Message):
+    masters = load_masters()
+    if not masters:
+        await message.answer(
+            "😔 Ҳозирча усталар рўйхати бўш.\n"
+            "Админ тез орада усталарни қўшади!"
+        )
+        return
+    await message.answer(
+        f"🔧 <b>Усталар рўйхати</b>\n\nЖами: {len(masters)} та уста мавжуд.\n"
+        "Қуйидагилардан бирини танланг:",
+        parse_mode="HTML"
+    )
+    for i, m in enumerate(masters, 1):
+        text = (
+            f"{i}. 👤 <b>{m['name']}</b>\n"
+            f"🛠 Мутахассислик: {m['specialization']}\n"
+            f"📞 Тел: <code>{m['phone']}</code>"
+        )
+        phone_clean = m['phone'].replace(" ", "").replace("-", "")
+        kb = InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(
+                text=f"📞 {m['name']} га қўнғироқ",
+                url=f"tel:{phone_clean}"
+            )
+        ]])
+        await message.answer(text, parse_mode="HTML", reply_markup=kb)
+
+# ===========================================================================
+# 🔧 USTALAR BOSHQARUVI — admin
+# ===========================================================================
+@dp.message(AdminState.menu, F.text == "🔧 Усталар бошқаруви")
+async def admin_masters_menu(message: Message, state: FSMContext):
+    masters = load_masters()
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="➕ Уста қўшиш", callback_data="master_add")],
+        *[[InlineKeyboardButton(
+            text=f"🗑 {m['name']} ({m['specialization']})",
+            callback_data=f"master_del_{i}"
+        )] for i, m in enumerate(masters)],
+    ])
+    text = (f"🔧 <b>Усталар бошқаруви</b>\nЖами: {len(masters)} та уста"
+            if masters else
+            "🔧 Усталар рўйхати бўш.\n\n➕ Уста қўшиш учун тугмани босинг.")
+    await message.answer(text, parse_mode="HTML", reply_markup=kb)
+
+@dp.callback_query(F.data == "master_add")
+async def admin_master_add_start(cb: CallbackQuery, state: FSMContext):
+    if not is_admin(cb.from_user.id): return
+    await state.set_state(AdminState.add_master_name)
+    await cb.message.answer("👤 Устанинг исм-фамилиясини ёзинг:", reply_markup=admin_cancel_keyboard())
+    await cb.answer()
+
+@dp.message(AdminState.add_master_name, F.text == "❌ Bekor qilish")
+@dp.message(AdminState.add_master_phone, F.text == "❌ Bekor qilish")
+@dp.message(AdminState.add_master_spec, F.text == "❌ Bekor qilish")
+async def admin_master_add_cancel(message: Message, state: FSMContext):
+    await state.set_state(AdminState.menu)
+    await message.answer("Бекор қилинди.", reply_markup=admin_menu_keyboard())
+
+@dp.message(AdminState.add_master_name)
+async def admin_master_name(message: Message, state: FSMContext):
+    await state.update_data(m_name=message.text)
+    await state.set_state(AdminState.add_master_phone)
+    await message.answer("📞 Телефон рақамини ёзинг (масалан: +998901234567):")
+
+@dp.message(AdminState.add_master_phone)
+async def admin_master_phone(message: Message, state: FSMContext):
+    await state.update_data(m_phone=message.text)
+    await state.set_state(AdminState.add_master_spec)
+    await message.answer("🛠 Мутахассислигини ёзинг (масалан: Сантехник, Электрик, Дурадгор):")
+
+@dp.message(AdminState.add_master_spec)
+async def admin_master_spec(message: Message, state: FSMContext):
+    data = await state.get_data()
+    masters = load_masters()
+    masters.append({
+        "name": data["m_name"],
+        "phone": data["m_phone"],
+        "specialization": message.text,
+        "added_at": datetime.now().strftime("%d.%m.%Y")
+    })
+    save_masters(masters)
+    await state.set_state(AdminState.menu)
+    await message.answer(
+        f"✅ Уста қўшилди!\n👤 {data['m_name']}\n🛠 {message.text}\n📞 {data['m_phone']}",
+        reply_markup=admin_menu_keyboard()
+    )
+
+@dp.callback_query(F.data.startswith("master_del_"))
+async def admin_master_delete(cb: CallbackQuery):
+    if not is_admin(cb.from_user.id): return
+    idx = int(cb.data.split("_")[2])
+    masters = load_masters()
+    if 0 <= idx < len(masters):
+        removed = masters.pop(idx)
+        save_masters(masters)
+        await cb.answer(f"✅ {removed['name']} ўчирилди")
+        await cb.message.answer(f"✅ Уста ўчирилди: {removed['name']}", reply_markup=admin_menu_keyboard())
+    else:
+        await cb.answer("Topilmadi")
+
+# ===========================================================================
+# 🚚 KURYER BO'LISH — foydalanuvchi ariza beradi
+# ===========================================================================
+async def courier_apply_start(message: Message, state: FSMContext):
+    couriers = load_couriers()
+    for c in couriers:
+        if c["user_id"] == message.from_user.id:
+            if c["status"] == "approved":
+                await message.answer("✅ Сиз аллақачон тасдиқланган курьерсиз!")
+            else:
+                await message.answer("⏳ Аризангиз кўриб чиқилмоқда. Илтимос, кутинг.")
+            return
+    await state.set_state(CourierState.applying)
+    await message.answer(
+        "🚚 <b>Курьер бўлиш учун ариза</b>\n\n"
+        "✍️ Исмингиз ва фамилиянгизни ёзинг:\n\n"
+        "(Бекор қилиш учун /start босинг)",
+        parse_mode="HTML",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text="❌ Бекор қилиш")]],
+            resize_keyboard=True
+        )
+    )
+
+@dp.message(CourierState.applying)
+async def courier_apply_name(message: Message, state: FSMContext):
+    if message.text == "❌ Бекор қилиш":
+        data = await state.get_data()
+        lang = data.get("lang","uz")
+        await go_main(message, state, lang)
+        return
+
+    await state.clear()
+    couriers = load_couriers()
+    entry = {
+        "user_id": message.from_user.id,
+        "username": message.from_user.username or "",
+        "full_name": message.from_user.full_name,
+        "courier_name": message.text,
+        "status": "pending",
+        "applied_at": datetime.now().strftime("%d.%m.%Y %H:%M"),
+        "commission_pct": 10
+    }
+    couriers.append(entry)
+    save_couriers(couriers)
+
+    await state.set_state(UserState.in_main_menu)
+    await message.answer(
+        "✅ <b>Аризангиз қабул қилинди!</b>\n\n"
+        "⏳ Админ кўриб чиқади ва тез орада жавоб беради.\n"
+        f"📞 Мурожаат учун: @{ADMIN_USERNAME}",
+        parse_mode="HTML",
+        reply_markup=get_categories_keyboard("uz", message.from_user.id)
+    )
+    uname = f"@{message.from_user.username}" if message.from_user.username else "—"
+    admin_text = (
+        "🚚 <b>ЯНГИ КУРЬЕР АРИЗАСИ</b>\n\n"
+        f"👤 Исм: <b>{message.text}</b>\n"
+        f"🔗 Telegram: {uname}\n"
+        f"🆔 ID: <code>{message.from_user.id}</code>\n"
+        f"📩 <a href='tg://user?id={message.from_user.id}'>Ёзиш учун босинг</a>"
+    )
+    approve_kb = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="✅ Тасдиқлаш", callback_data=f"courier_ok_{message.from_user.id}"),
+        InlineKeyboardButton(text="❌ Рад этиш",  callback_data=f"courier_no_{message.from_user.id}"),
+    ]])
+    for admin_id in ADMIN_IDS:
+        try:
+            await bot.send_message(int(admin_id), admin_text, parse_mode="HTML", reply_markup=approve_kb)
+        except Exception as e:
+            logger.error(f"Kuryer ariza xabar xatosi: {e}")
+
+@dp.callback_query(F.data.startswith("courier_ok_"))
+async def courier_approve(cb: CallbackQuery):
+    if not is_admin(cb.from_user.id): return
+    uid = int(cb.data.split("_")[2])
+    couriers = load_couriers()
+    for c in couriers:
+        if c["user_id"] == uid:
+            c["status"] = "approved"
+            break
+    save_couriers(couriers)
+    await cb.answer("✅ Тасдиқланди")
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await cb.message.answer(f"✅ Курьер #{uid} тасдиқланди.")
+    try:
+        await bot.send_message(uid,
+            "🎉 <b>Табриклаймиз!</b>\n\n"
+            "✅ Админ сизни курьер сифатида тасдиқлади!\n"
+            f"💰 Комиссия: 10% (ҳар буюртмадан)\n\n"
+            f"📞 Админ билан боғланинг: @{ADMIN_USERNAME}",
+            parse_mode="HTML"
+        )
+    except Exception: pass
+
+@dp.callback_query(F.data.startswith("courier_no_"))
+async def courier_reject(cb: CallbackQuery):
+    if not is_admin(cb.from_user.id): return
+    uid = int(cb.data.split("_")[2])
+    couriers = load_couriers()
+    couriers = [c for c in couriers if c["user_id"] != uid]
+    save_couriers(couriers)
+    await cb.answer("❌ Рад этилди")
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await cb.message.answer(f"❌ Курьер #{uid} рад этилди.")
+    try:
+        await bot.send_message(uid,
+            "😔 Афсуски, аризангиз рад этилди.\n"
+            f"Батафсил маълумот учун: @{ADMIN_USERNAME}"
+        )
+    except Exception: pass
+
+@dp.message(AdminState.menu, F.text == "🚚 Курьер бошқаруви")
+async def admin_couriers_menu(message: Message):
+    couriers = load_couriers()
+    if not couriers:
+        await message.answer("🚚 Ҳозирча курьер аризалари йўқ.", reply_markup=admin_menu_keyboard()); return
+    text = "🚚 <b>Курьерлар рўйхати</b>\n\n"
+    for c in couriers:
+        status_emoji = "✅" if c["status"] == "approved" else "⏳"
+        uname = f"@{c['username']}" if c.get("username") else "—"
+        text += (
+            f"{status_emoji} <b>{c['courier_name']}</b>\n"
+            f"   🔗 {uname} | 🆔 <code>{c['user_id']}</code>\n"
+            f"   💰 Комиссия: {c.get('commission_pct', 10)}%\n"
+            f"   📅 {c.get('applied_at','')}\n\n"
+        )
+    await message.answer(text, parse_mode="HTML", reply_markup=admin_menu_keyboard())
+# ===========================================================================
 # 8) ADMIN XABAR FUNKSIYALARI
 # ===========================================================================
 
@@ -2410,19 +2682,43 @@ async def notify_admin_order(user, product, category):
 
 async def notify_admin_cart_order(user, cart, order_id, discount=0, delivery_fee=0, user_lat=None, user_lon=None):
     if not ADMIN_IDS: return
+    import re as _re
     items_str = "\n".join(f"  • {i['name']} — {i['price']}" for i in cart)
+
+    # Jami summa hisoblash
+    total = 0
+    for i in cart:
+        nums = _re.findall(r'\d+', i.get("price", "").replace(" ", ""))
+        if nums:
+            total += int(nums[0])
+
     delivery_str = f"\n🚚 Yetkazib berish: {delivery_fee:.0f} {DELIVERY_CURRENCY}" if delivery_fee > 0 else ""
-    text = (f"🔔 YANGI BUYURTМА #{order_id} | Kod: #{order_id}!\n\n"
-            f"Mahsulotlar:\n{items_str}\n"
-            f"Chegirma: {discount}%{delivery_str}\n\n"
-            f"Xaridor: {user.full_name} (@{user.username or '—'})\n"
-            f"📩 Lichka: tg://user?id={user.id}")
-    # Tovushli xabarnoma + xarita
+    disc_str = f"\n🎟 Chegirma: {discount}%" if discount > 0 else ""
+    total_val = total + delivery_fee
+    total_str = f"\n💰 Jami to'lov: <b>{total_val:.0f} {DELIVERY_CURRENCY}</b>" if total_val > 0 else ""
+    username_str = f"@{user.username}" if user.username else "—"
+
+    text = (
+        f"┌──────────────────────────┐\n"
+        f"│   🛒 YANGI BUYURTMA #{order_id}   │\n"
+        f"└──────────────────────────┘\n\n"
+        f"👤 Xaridor: <b>{user.full_name}</b>\n"
+        f"🔗 Telegram: {username_str}\n"
+        f"🆔 ID: <code>{user.id}</code>\n"
+        f"📩 Lichkaga yozish: <a href='tg://user?id={user.id}'>bosing</a>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📦 Mahsulotlar:\n{items_str}"
+        f"{delivery_str}{disc_str}{total_str}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📅 Vaqt: {datetime.now().strftime('%d.%m.%Y %H:%M')}"
+    )
     for admin_id in ADMIN_IDS:
         try:
-            await bot.send_message(int(admin_id), "🔔🔔🔔 ЯНГИ ЗАКАЗ ТУШДИ!")
-            await bot.send_message(int(admin_id), text, reply_markup=order_status_inline(order_id))
-            # Xaridor lokatsiyasini xarita sifatida yuborish
+            # 1) Ovozli signal — dice animatsiya (tovush effekti)
+            await bot.send_dice(int(admin_id), emoji="🎰")
+            # 2) Chiroyli asosiy xabar + tugmalar
+            await bot.send_message(int(admin_id), text, parse_mode="HTML", reply_markup=order_status_inline(order_id))
+            # 3) Xaridor lokatsiyasi xarita sifatida
             if user_lat and user_lon:
                 await bot.send_location(int(admin_id), latitude=user_lat, longitude=user_lon)
         except Exception as e:
@@ -2623,7 +2919,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except SystemExit:
         _had_error = True
-    except 5:
+    except KeyboardInterrupt:
         print("\nBot to'xtatildi (foydalanuvchi tomonidan).")
     except Exception as e:
         _had_error = True
